@@ -1,0 +1,13 @@
+# Early Warning Studio (python -m server) and the command-line runners in scripts/.
+# The Databricks notebooks (00_setup.py ... 09_live_simulator.py) install what they need with %pip.
+pandas>=2.0
+numpy
+scikit-learn>=1.3
+lightgbm>=4.0
+pyarrow
+duckdb>=1.0
+joblib
+fastapi>=0.110
+uvicorn>=0.29
+anthropic>=0.89
+python-dotenv

@@ -1,0 +1,25 @@
+# secrets
+.env
+.env.*
+!.env.example
+
+# local data written by the app (lakehouse, models, run metadata, caches, outbox)
+data/
+local_output/
+
+# recording scratch: frames, drafts and logs (final videos are kept)
+recordings/_frames/
+recordings/_draft/
+recordings/*.log
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+*.tmp
+
+# editors / OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

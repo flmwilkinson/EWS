@@ -1,0 +1,8 @@
+command: ["streamlit", "run", "app.py"]
+env:
+  - name: DATABRICKS_WAREHOUSE_ID
+    valueFrom: sql-warehouse        # the resource key you give the SQL warehouse when you create the app
+  - name: EWS_CATALOG
+    value: workspace                # change if you set a different CATALOG in ews_lib/config.py
+  - name: STREAMLIT_GATHER_USAGE_STATS
+    value: "false"

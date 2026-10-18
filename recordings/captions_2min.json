@@ -1,0 +1,32 @@
+[
+  {
+    "text": "1 · The process: one pipeline from source data to real-time decisions, every step a notebook",
+    "start": 3.6,
+    "end": 19.7
+  },
+  {
+    "text": "2 · The dashboard: where the book sits, what is driving it, and an AI-written summary for the CRO",
+    "start": 19.7,
+    "end": 40.8
+  },
+  {
+    "text": "3 · Queue a run: retrain and compare the six models on demand",
+    "start": 40.8,
+    "end": 51.0
+  },
+  {
+    "text": "4 · The code: each cell runs in order and turns green, with its output as it happens",
+    "start": 51.0,
+    "end": 72.7
+  },
+  {
+    "text": "5 · The result: every event re-scored in real time, customers escalated, explained and acted on",
+    "start": 72.7,
+    "end": 93.8
+  },
+  {
+    "text": "Every alert drills down to the customer: why, what changed, and what each part of the bank does next",
+    "start": 93.8,
+    "end": 115.2
+  }
+]
