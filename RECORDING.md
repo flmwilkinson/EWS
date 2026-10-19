@@ -5,7 +5,7 @@ Two videos are recorded automatically, each in a captioned version and a clean v
 | Video | Files in `recordings/` | Length | Story |
 |---|---|---|---|
 | **The two-minute story** | `early_warning_studio_2min.mp4`, `early_warning_studio_2min_clean.mp4` | 1:59 | How to build an early warning system: the process, the dashboard, queuing a run, the code, the live result |
-| **The product tour** | `early_warning_studio_tour.mp4`, `early_warning_studio_tour_clean.mp4` | about 2:00 | A fresh pipeline run on camera (time-lapse), a notebook, the official data APIs, the live monitor, a customer |
+| **The product tour** | `early_warning_studio_tour.mp4`, `early_warning_studio_tour_clean.mp4` | 2:20 | A fresh pipeline run on camera (time-lapse), a notebook, the official data APIs, the live monitor, a customer |
 
 To re-record, with the app running (`.\start.ps1`):
 
@@ -41,14 +41,17 @@ python scripts/record_demo.py --story tour    # the product tour: resets and run
 | Time | Scene | What to do |
 |---|---|---|
 | 0:00–0:04 | Title | Title card |
-| 0:04–0:33 | Workflows | Start from red crosses (**Reset environment**, tick **Also clear run history**), press **Run pipeline**, speed this part up 12× in the edit and say so on screen |
-| 0:33–0:47 | Workspace | Open `07_train_models.py` and scroll through the output |
-| 0:47–1:04 | Connectors | Scroll to **Official macroeconomic sources**, press **Fetch latest** on the Bank of England card, show regional unemployment |
-| 1:04–1:29 | Live monitor | Pre-roll to day 9 as above, then **Resume** |
-| 1:29–1:52 | Customer 360 | Click **Dan**, let the explanation finish, scroll slowly |
-| 1:52–1:56 | End card | |
+| 0:04–0:26 | Workflows | Start from red crosses (**Reset environment**, tick **Also clear run history**) and press **Run pipeline**. The recorder speeds the run up to about 16 seconds on screen (around 23×), holds the loading spinners still while it does, and says so in the caption |
+| 0:26–0:31 | Workflows | All eleven tasks green, with the run history |
+| 0:31–0:54 | Workspace | Open `07_train_models.py` and scroll through the output |
+| 0:54–1:14 | Connectors | Scroll to **Official macroeconomic sources**, press **Fetch latest** on the Bank of England card, show regional unemployment |
+| 1:14–1:44 | Live monitor | Pre-roll to day 9 as above, then **Resume** |
+| 1:44–2:16 | Customer 360 | Click **Dan**, let the explanation finish, scroll slowly |
+| 2:16–2:20 | End card | |
 
 ## If something goes wrong
+
+- **The PC sleeps mid-take**: the recorder keeps Windows awake while it runs, but closing the lid still sleeps the machine. Re-run the take.
 
 - **A task fails with `MemoryError`**: close applications, select the failed task in Workflows and press **Run from here**.
 - **The live feed is quiet**: customers take a few business days to escalate. Pre-roll further on **Fast** before pausing.

@@ -442,7 +442,7 @@ async def take(page, rec: Recorder, hand: Hand, keep_data: bool):
         timelapse_caption = len(rec.captions) - 1
         order = [t["key"] for t in api("GET", "/api/jobs/pipeline")["tasks"]]
         shown, t0 = None, time.time()
-        while time.time() - t0 < 600:
+        while time.time() - t0 < 1200:  # about 7 minutes under recording load; leave headroom
             runs = api("GET", "/api/runs?limit=1")
             r = runs[0] if runs else None
             if r and r["status"] != "RUNNING":
@@ -606,7 +606,16 @@ async def main(story: str, keep_data: bool):
     shutil.rmtree(work, ignore_errors=True)
 
 
+def keep_awake():
+    """Stop Windows idle sleep for the rest of this process: a sleep mid-take freezes the pipeline and breaks the timing."""
+    if sys.platform == "win32":
+        import ctypes
+        ES_CONTINUOUS, ES_SYSTEM_REQUIRED = 0x80000000, 0x00000001
+        ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED)
+
+
 if __name__ == "__main__":
+    keep_awake()
     ap = argparse.ArgumentParser()
     ap.add_argument("--story", choices=["build", "tour", "tour-tail"], default="build",
                     help="build: the two-minute story; tour: the product tour; tour-tail: re-shoot the tour from the live monitor on")
