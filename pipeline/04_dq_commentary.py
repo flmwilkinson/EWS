@@ -1,7 +1,7 @@
 # %% [markdown]
 # # 04 · Data quality commentary (AI)
 #
-# Claude writes the data quality paragraph for the monthly EWS pack. It receives **only structured facts**
+# The AI writes the data quality paragraph for the monthly EWS pack. It receives **only structured facts**
 # (rule results and remediation counts), never customer records, and is told to use only those facts.
 # If the model is unavailable the deterministic template is used, so the pipeline never depends on a live call.
 #

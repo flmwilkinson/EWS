@@ -5,6 +5,7 @@ import { applyEvent, cellProgress } from "../runstate.js";
 import { route } from "../router.js";
 import * as C from "../components.js";
 import * as F from "../format.js";
+import { RunCompare } from "../compare.js";
 
 const { ref, reactive, computed, watch, onMounted, onBeforeUnmount, nextTick } = Vue;
 const NODE_W = 166, COL = 192, ROW = 98, NODE_H = 76;
@@ -12,12 +13,12 @@ const REFERENCE = new Set(["bronze.generator_truth", "bronze.personas"]);  // va
 const shown = (ts) => (ts || []).filter((t) => !REFERENCE.has(t.table));
 
 export default {
-  components: C.all,
+  components: { ...C.all, RunCompare },
   setup() {
     const tasks = computed(() => store.pipeline?.tasks || []);
     const selRunId = ref(null);
     const selTask = ref(null);
-    const view = ref("history");
+    const view = ref(route.query.view || "history");
     const details = reactive({});      // key -> full task state for the selected run
     const pendingFetch = {};
     const wrap = ref(null), scale = ref(1);
@@ -127,8 +128,8 @@ export default {
   },
   template: `<div>
   <div class="page-head">
-    <div><div class="eyebrow">Job · {{ tasks.length }} tasks · {{ store.pipeline?.cluster }}</div><h1>{{ store.pipeline?.name || 'EWS monthly pipeline' }}</h1>
-      <p>Land, load, check, build features, seed thresholds, train and compare models, score and tier the watchlist, monitor, write the AI commentary and publish to the real-time service. Each task is a notebook in the Workspace.</p></div>
+    <div><div class="eyebrow">Job · {{ tasks.length }} tasks · {{ store.pipeline?.cluster }}</div><h1>{{ store.pipeline?.name || 'Credit card EWS monthly pipeline' }}</h1>
+      <p>The month-end build of the credit card early warning system: land and check the data, build monthly and real-time signals, train and compare models, score and tier every card customer, monitor, write the AI commentary and publish to the real-time service. Each task is a notebook in the Workspace.</p></div>
     <div class="actions">
       <button class="btn" @click="showReset = true" :disabled="!!store.activeRunId"><Icon name="rotate-ccw" :size="14" />Reset environment</button>
       <button v-if="store.activeRunId" class="btn danger" @click="cancel"><Icon name="square" :size="14" />Cancel run</button>
@@ -179,10 +180,11 @@ export default {
     </div>
   </div>
 
-  <div class="grid g-3-2">
+  <RunCompare v-if="view === 'compare'" :runs="runsList" v-model:view="view" />
+  <div class="grid g-3-2" v-else>
     <div class="card">
       <div class="card-head"><h3>Run history</h3><div class="sub">{{ runsList.length }} runs</div>
-        <div class="actions"><Seg v-model="view" :options="[{ value: 'history', label: 'List' }, { value: 'matrix', label: 'Matrix' }]" /></div></div>
+        <div class="actions"><Seg v-model="view" :options="[{ value: 'history', label: 'List' }, { value: 'matrix', label: 'Matrix' }, { value: 'compare', label: 'Compare' }]" /></div></div>
       <div class="card-body flush" v-if="view === 'history'">
         <DataTable :columns="[{ key: 'status', label: 'Status' }, { key: 'run_id', label: 'Run' }, { key: 'started_at', label: 'Started' },
             { key: 'duration', label: 'Duration', align: 'r' }, { key: 'scope', label: 'Scope' }, { key: 'tasks', label: 'Tasks', sortable: false },

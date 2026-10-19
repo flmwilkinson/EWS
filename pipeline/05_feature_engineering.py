@@ -52,7 +52,7 @@ chart("bar", fam.index, {"Features": fam.values}, title="Features by evidence fa
 
 # %% Contact notes: sentiment and topic
 # An offline, transparent lexicon scores every note (−1 to 1) and assigns a topic. The live service and the
-# customer view show the same notes; Claude can classify them too.
+# customer view show the same notes; the AI can classify them too.
 notes = fe.score_notes(s["contact_notes"])
 lh.write("silver.contact_notes_scored", notes, description="Contact notes with sentiment (-1 to 1) and topic")
 display(notes.groupby("topic").agg(notes=("note_id", "size"), avg_sentiment=("sentiment", "mean")).reset_index(), title="Notes by topic")

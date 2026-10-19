@@ -198,13 +198,13 @@ export const AiPanel = {
     onMounted(() => { if (props.auto || (!text.value && props.kind)) run(); });
     onBeforeUnmount(() => stop?.());
     const footer = computed(() => {
-      if (streaming.value) return `Writing with ${store.health?.llm?.model || "Claude"}…`;
-      if (meta.value?.source === "llm") return `${meta.value.model} · ${(meta.value.latency_ms / 1000).toFixed(1)}s · ${meta.value.output_tokens} tokens · just now`;
-      if (meta.value?.source === "template" || source.value === "template") return "Template text: Claude was not available";
+      if (streaming.value) return "Writing with AI…";
+      if (meta.value?.source === "llm") return `AI · ${(meta.value.latency_ms / 1000).toFixed(1)}s · ${meta.value.output_tokens} tokens · just now`;
+      if (meta.value?.source === "template" || source.value === "template") return "Template text: the AI service was not available";
       if (props.stored) {
         const c = props.stored.call;
         const when = props.stored.created_at ? F.ago(props.stored.created_at) : "";
-        return `Written by ${props.stored.model || c?.served_by || c?.model || "Claude"} during the pipeline run ${when ? "· " + when : ""}`;
+        return `Written by AI during the pipeline run ${when ? "· " + when : ""}`;
       }
       return "";
     });
@@ -311,7 +311,7 @@ export const CellOutputs = {
     <div v-else-if="o.kind === 'progress'" class="out-progress"><span>{{ o.label }}</span><PBar :value="o.done" :max="o.total" /><span class="mono">{{ o.done }}/{{ o.total }}</span></div>
     <div v-else-if="o.kind === 'chips'" class="out-chips"><template v-for="(c, j) in o.items" :key="j">
       <a v-if="c.kind === 'table_written'" class="chip blue" :href="'#/catalog/' + c.table"><Icon name="table" :size="12" />{{ c.table }} v{{ c.version }} · {{ c.rows.toLocaleString() }} rows</a>
-      <span v-else-if="c.kind === 'llm'" class="chip violet"><Icon name="sparkles" :size="12" />{{ c.purpose }} · {{ c.model }} · {{ c.status === 'ok' ? ((c.latency_ms/1000).toFixed(1) + 's · ' + c.output_tokens + ' tok') : c.status }}</span>
+      <span v-else-if="c.kind === 'llm'" class="chip violet"><Icon name="sparkles" :size="12" />AI · {{ c.purpose }} · {{ c.status === 'ok' ? ((c.latency_ms/1000).toFixed(1) + 's · ' + c.output_tokens + ' tok') : c.status }}</span>
       <span v-else-if="c.kind === 'model'" class="chip" :class="c.stage === 'Champion' ? 'green' : ''"><Icon name="package" :size="12" />{{ c.name }} v{{ c.version }} · {{ c.stage }}</span>
     </template></div>
   </template></div>`,

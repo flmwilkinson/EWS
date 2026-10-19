@@ -1,32 +1,42 @@
 [
   {
-    "text": "1 · The process: one pipeline from source data to real-time decisions, every step a notebook",
-    "start": 3.6,
-    "end": 19.7
+    "text": "1 · A credit card early warning system: eleven pipeline steps, each one a notebook",
+    "start": 1.1,
+    "end": 13.9
   },
   {
-    "text": "2 · The dashboard: where the book sits, what is driving it, and an AI-written summary for the CRO",
-    "start": 19.7,
-    "end": 40.8
+    "text": "2 · The card book by risk tier, the main drivers, and an AI summary for the CRO",
+    "start": 13.9,
+    "end": 30.7
   },
   {
-    "text": "3 · Queue a run: retrain and compare the six models on demand",
-    "start": 40.8,
-    "end": 51.0
+    "text": "3 · Run any step on demand: here, retrain the models",
+    "start": 30.7,
+    "end": 39.5
   },
   {
-    "text": "4 · The code: each cell runs in order and turns green, with its output as it happens",
-    "start": 51.0,
-    "end": 72.7
+    "text": "4 · Target labels come from historical risk buckets; inputs combine monthly and real-time data",
+    "start": 39.5,
+    "end": 54.7
   },
   {
-    "text": "5 · The result: every event re-scored in real time, customers escalated, explained and acted on",
-    "start": 72.7,
-    "end": 93.8
+    "text": "Each cell turns green when it runs, with its output underneath",
+    "start": 54.7,
+    "end": 60.0
   },
   {
-    "text": "Every alert drills down to the customer: why, what changed, and what each part of the bank does next",
-    "start": 93.8,
-    "end": 115.2
+    "text": "5 · Compare runs: monthly data only (A) against monthly plus real-time signals (B)",
+    "start": 60.0,
+    "end": 82.9
+  },
+  {
+    "text": "6 · Real time: each new card, current account and bureau event is scored as it arrives",
+    "start": 82.9,
+    "end": 100.1
+  },
+  {
+    "text": "7 · Customer view: why the customer is flagged, what changed and the recommended actions",
+    "start": 100.1,
+    "end": 118.2
   }
 ]

@@ -1,47 +1,57 @@
 [
   {
-    "text": "The monthly EWS pipeline: eleven tasks, each an editable notebook. Every task starts as a red cross",
-    "start": 4.44,
-    "end": 10.16
+    "text": "The credit card early warning pipeline: eleven steps, each an editable notebook",
+    "start": 1.21,
+    "end": 6.75
   },
   {
-    "text": "Data, quality checks, features, thresholds, six models, scoring, monitoring, AI commentary: shown 23\u00d7 faster",
-    "start": 10.16,
-    "end": 26.16
+    "text": "Running: data load, quality checks, features, thresholds, models, scoring, monitoring and AI commentary",
+    "start": 6.75,
+    "end": 22.75
   },
   {
-    "text": "All eleven tasks green, with the run history, rows written and every AI call recorded",
-    "start": 26.16,
-    "end": 31.07
+    "text": "All steps complete. Each run records the rows written and the AI calls made",
+    "start": 22.75,
+    "end": 27.75
   },
   {
-    "text": "Every task is a notebook: the code, its output and the tables it writes, editable and re-runnable",
-    "start": 31.07,
-    "end": 54.22
+    "text": "Each step is a notebook: the code, its output and the tables it writes",
+    "start": 27.75,
+    "end": 39.26
   },
   {
-    "text": "Live connectors to official data: Bank of England, ONS and HM Land Registry APIs",
-    "start": 54.22,
-    "end": 74.35
+    "text": "Target labels come from historical risk buckets; inputs combine monthly and real-time data",
+    "start": 39.26,
+    "end": 53.99
   },
   {
-    "text": "Real time: every event is re-scored as it arrives, and customers move through the watchlist",
-    "start": 74.35,
-    "end": 90.19
+    "text": "Compare runs: monthly data only (A) against monthly plus real-time signals (B)",
+    "start": 53.99,
+    "end": 79.77
   },
   {
-    "text": "Alerts carry the evidence, the action, and an explanation written by Claude as it happens",
-    "start": 90.19,
-    "end": 104.37
+    "text": "Official data feeds: Bank of England, ONS and HM Land Registry",
+    "start": 79.77,
+    "end": 100.14
   },
   {
-    "text": "Drill into any customer: why Dan is flagged, what changed, and what each part of the bank does next",
-    "start": 104.37,
-    "end": 119.52
+    "text": "Real time: each new card, current account and bureau event is scored as it arrives",
+    "start": 100.14,
+    "end": 116.65
   },
   {
-    "text": "Five models, the drivers behind the PD, and every trigger against its thresholds",
-    "start": 119.52,
-    "end": 135.94
+    "text": "Each alert shows the signals, the recommended action and an AI explanation",
+    "start": 116.65,
+    "end": 132.24
+  },
+  {
+    "text": "Customer view: why Dan is flagged, what changed and the recommended actions",
+    "start": 132.24,
+    "end": 145.71
+  },
+  {
+    "text": "Model drivers, and each trigger against its amber and red thresholds",
+    "start": 145.71,
+    "end": 162.28
   }
 ]

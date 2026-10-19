@@ -99,7 +99,7 @@ const LiveAlerts = {
           <span class="small num">PD {{ F.pct(a.pd_before, 1) }} → <b :style="{ color: a.pd_after > a.pd_before ? 'var(--bad-text)' : 'var(--ok-text)' }">{{ F.pct(a.pd_after, 1) }}</b></span></div>
         <div class="row wrap" style="gap:4px;margin-top:6px" v-if="a.new_triggers"><span v-for="t in a.new_triggers.split(',').filter(Boolean)" :key="t" class="chip red">{{ names[t] || t }}</span></div>
         <div class="small" style="margin-top:6px"><b>Action:</b> {{ a.recommended_action }} <span v-if="F.TIER_NUM[a.tier_after] >= 3 && a.pay_lean" class="chip outline" style="margin-left:4px">{{ a.pay_lean }}</span></div>
-        <div v-if="a.ai_summary !== undefined && a.ai_summary !== null" class="summary ai" :class="{ caret: a.ai_streaming }"><span class="chip violet" style="height:18px;margin-right:6px"><Icon name="sparkles" :size="11" />{{ a.ai_model || 'Claude' }}</span><span v-html="inline(a.ai_summary)"></span></div>
+        <div v-if="a.ai_summary !== undefined && a.ai_summary !== null" class="summary ai" :class="{ caret: a.ai_streaming }"><span class="chip violet" style="height:18px;margin-right:6px"><Icon name="sparkles" :size="11" />AI</span><span v-html="inline(a.ai_summary)"></span></div>
         <template v-else><div class="summary muted clamp3" :title="a.summary">{{ a.summary }}</div><button class="btn xs ai" style="margin-top:6px" @click.stop="explain(a)"><Icon name="sparkles" :size="11" />Explain with AI</button></template>
       </div></div></div>`,
 };

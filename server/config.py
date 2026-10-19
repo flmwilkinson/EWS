@@ -17,7 +17,7 @@ MAX_PARALLEL_TASKS = int(os.getenv("EWS_MAX_PARALLEL", "2"))  # set to 1 on a ma
 # Editable in the Workspace (paths relative to ROOT)
 WORKSPACE_FOLDERS = ["pipeline", "ews_lib"]
 
-JOB_NAME = "EWS monthly pipeline"
+JOB_NAME = "Credit card EWS monthly pipeline"
 
 # key, notebook, title, depends on, DAG column, DAG row (0 top, 1 main line, 2 bottom), description
 TASKS = [
@@ -28,19 +28,19 @@ TASKS = [
     dict(key="dq", notebook="03_data_quality.py", title="Data quality", deps=["ingest"], col=2, row=1,
          group="Data", desc="Run the rule catalogue, quarantine and remediate into silver"),
     dict(key="dq_commentary", notebook="04_dq_commentary.py", title="DQ commentary", deps=["dq"], col=3, row=0,
-         group="AI", desc="Claude writes the data quality commentary and explains each failed rule"),
+         group="AI", desc="AI writes the data quality commentary and explains each failed rule"),
     dict(key="features", notebook="05_feature_engineering.py", title="Build features", deps=["dq"], col=3, row=1,
-         group="Modelling", desc="Levels, changes, relatives and interactions; forward-looking targets"),
+         group="Modelling", desc="Monthly and real-time signals; target labels from historical risk buckets"),
     dict(key="thresholds", notebook="06_seed_thresholds.py", title="Seed thresholds", deps=["features"], col=4, row=1,
          group="Modelling", desc="Policy versus data-calibrated amber and red thresholds for 38 triggers"),
     dict(key="models", notebook="07_train_models.py", title="Train and compare models", deps=["thresholds"], col=5, row=1,
-         group="Modelling", desc="Six PD approaches out of time, champion rule, secondary models, registry"),
+         group="Modelling", desc="Six approaches compared out of time, champion rule, secondary models, registry"),
     dict(key="score", notebook="08_score_watchlist.py", title="Score and watchlist", deps=["models"], col=6, row=1,
          group="EWS", desc="Score 18 months, fire triggers, tier the watchlist, decide for six uses"),
     dict(key="monitoring", notebook="09_monitoring.py", title="Build monitoring", deps=["score"], col=7, row=1,
          group="Monitoring", desc="RAG pack: discrimination, calibration, stability, lead time, flows"),
     dict(key="monitoring_commentary", notebook="10_monitoring_commentary.py", title="Monitoring commentary", deps=["monitoring"],
-         col=8, row=1, group="AI", desc="Claude writes the model risk commentary and the CRO summary"),
+         col=8, row=1, group="AI", desc="AI writes the model risk commentary and the CRO summary"),
     dict(key="publish", notebook="11_publish_realtime.py", title="Publish to real time", deps=["score"], col=7, row=2,
          group="EWS", desc="Smoke test, latency test and serving manifest; the live service reloads"),
 ]

@@ -1,19 +1,27 @@
 # %% [markdown]
-# # 07 · Build and compare models: scorecard versus machine learning
+# # 07 · Train and compare the early warning models
 #
-# Six approaches to the same target (**60+ days past due within 6 months**), trained on October 2024 to June 2025,
-# Platt-calibrated on July to September 2025 and judged **out of time** on October 2025 to March 2026.
+# **Target labels come from historical risk buckets.** Every card account sits in a risk bucket each month (up to
+# date, 1, 2 or 3+ cycles delinquent, or charged off). Each customer-month is labelled with the worst bucket the
+# account reached in the following six months; the event is bucket 2+ (60+ days past due) or charge-off.
+# Six approaches are trained on October 2024 to June 2025, Platt-calibrated on July to September 2025 and judged
+# **out of time** on October 2025 to March 2026.
+#
+# **Inputs combine monthly and real-time data.** Monthly: the card statement, the bureau refresh, other products and
+# macro. Real-time: the signals the live service updates as events arrive (current account transactions, card cash
+# advances, bureau triggers and contact centre notes), so the same models re-score customers between month ends.
+# Set `USE_REALTIME_SIGNALS = False` to train on monthly data only, then compare the two runs in Workflows.
 #
 # | # | Approach | What it is | Features |
 # |---|---|---|---|
-# | 1 | Weighted scoring model | Expert weights on KRIs, scored 0 / 0.5 / 1 against amber and red; only the PD mapping is fitted | 17 KRIs |
+# | 1 | Weighted scoring model | Expert weights on KRIs, scored 0 / 0.5 / 1 against amber and red; only the mapping to a probability is fitted | 17 KRIs |
 # | 2 | Logistic regression scorecard | Quantile binning, weight of evidence, logistic regression, points at 600 = 50:1 odds, 20 points to double | 17 characteristics |
 # | 3 | Decision tree | Single tree, depth 5 | all |
 # | 4 | Random forest | 200 trees, depth 9 | all |
 # | 5 | Gradient boosting (LightGBM) | Monotone constraints: risk can only rise with utilisation, missed payments, searches… | all |
 # | 6 | Neural network (MLP) | Two hidden layers with early stopping | all |
 #
-# **Age and vulnerability are excluded from every PD model by design.** Vulnerability routes treatment; it never
+# **Age and vulnerability are excluded from every model by design.** Vulnerability routes treatment; it never
 # prices or limits credit.
 #
 # **Champion rule:** the best out-of-time Gini among models that give exact per-customer reasons (scorecard,
@@ -31,17 +39,28 @@ from ews_lib import features as fe, models as mo, registry
 from ews_lib.lakehouse import lh
 from ews_lib.runtime import chart, display, metrics, progress
 
-TARGET = "bad_6m"
-MAX_GINI_GAP = 0.0   # e.g. 0.02: choose the scorecard if it is within 2 Gini points of the best eligible model
+TARGET = "bad_6m"            # worst risk bucket in the next 6 months is 2+ (60+ days past due) or charged off
+USE_REALTIME_SIGNALS = True  # False: monthly data only (card statement, bureau refresh, other products, macro)
+MAX_GINI_GAP = 0.0           # e.g. 0.02: choose the scorecard if it is within 2 Gini points of the best eligible model
 
 panel = lh.read("gold.customer_month_features")
+exclude = [] if USE_REALTIME_SIGNALS else fe.REALTIME_SIGNALS
 dev, cal, oot = mo.split(panel, TARGET)
 metrics({"Development": f"{len(dev):,}", "Calibration": f"{len(cal):,}", "Out of time": f"{len(oot):,}",
-         "Dev bad rate": f"{dev[TARGET].mean():.2%}", "OOT bad rate": f"{oot[TARGET].mean():.2%}"}, title="Samples")
+         "Event rate (dev)": f"{dev[TARGET].mean():.2%}", "Event rate (OOT)": f"{oot[TARGET].mean():.2%}",
+         "Real-time signals": "Included" if USE_REALTIME_SIGNALS else "Excluded"}, title="Samples")
 
-# %% Train the six PD approaches
+# %% Target labels from historical risk buckets
+buckets = dev.groupby("worst_bucket_6m").size().rename("customer_months").reset_index()
+buckets["worst_bucket_next_6m"] = buckets.worst_bucket_6m.astype(int).map(fe.RISK_BUCKETS)
+buckets["share"] = buckets.customer_months / buckets.customer_months.sum()
+buckets["label"] = np.where(buckets.worst_bucket_6m >= 2, "Event (1)", "No event (0)")
+display(buckets[["worst_bucket_next_6m", "customer_months", "share", "label"]],
+        title="Development sample: worst risk bucket reached in the next 6 months")
+
+# %% Train the six model approaches
 rows, fitted = [], {}
-zoo = mo.model_zoo()
+zoo = mo.model_zoo(exclude=exclude)
 for i, (name, (model, feats)) in enumerate(zoo.items()):
     progress("Training models", i, len(zoo))
     row, fitted[name] = mo.fit_one(name, model, feats, dev, cal, oot, TARGET)
@@ -54,7 +73,7 @@ results = mo.finalise_results(rows)
 # %% Choose the champion
 champion, reason = mo.choose_champion(results, max_gini_gap=MAX_GINI_GAP)
 results["is_champion"] = results.model == champion
-lh.write("gold.model_comparison", results, description="Six PD approaches compared out of time, with the champion flagged")
+lh.write("gold.model_comparison", results, description="Six early warning model approaches compared out of time, with the champion flagged")
 print(f"Champion: {champion}\n{reason}")
 display(results[["model", "is_champion", "n_features", "dev_gini", "gini", "gini_drop_dev_to_oot", "ks", "brier",
                  "top_decile_capture", "calibration_ratio", "psi_vs_dev", "explainability", "governance_effort"]],
@@ -101,11 +120,11 @@ secondary_rows = []
 bundles = {}
 for tgt, label in [("arrears_3m", "Probability of arrears (3m)"), ("forbearance_6m", "Probability of forbearance (6m)"),
                    ("cure_2m", "Propensity to pay (cure within 2m)")]:
-    bundles[tgt] = mo.train_secondary(panel, tgt)
+    bundles[tgt] = mo.train_secondary(panel, tgt, features=[f for f in mo.ML_FEATURES if f not in exclude])
     secondary_rows.append(dict(model=label, target=tgt, **bundles[tgt]["metrics"]))
     print(f"{label:<38} Gini {bundles[tgt]['metrics']['gini']:.3f}")
 cp_set = fe.cant_pay_training_set(panel, lh.read("silver.collections_events"))
-bundles["cant_pay"] = mo.train_cant_pay(cp_set)
+bundles["cant_pay"] = mo.train_cant_pay(cp_set, features=[f for f in mo.ML_FEATURES + ["vulnerability_notes_3m"] if f not in exclude])
 label = "Can't pay vs won't pay"
 secondary_rows.append(dict(model=label, target="cant_pay", **bundles["cant_pay"]["metrics"]))
 print(f"{label:<38} Gini {bundles['cant_pay']['metrics']['gini']:.3f}  "
@@ -123,7 +142,7 @@ res = results.set_index("model")
 for name in sorted(fitted, key=lambda n: n == champion):  # champion last, so it demotes the previous one
     registry.register(SLUG[name], fitted[name], family="pd_6m", stage="Champion" if name == champion else "Challenger",
                       approach=name, target=TARGET, metrics=res.loc[name, ["dev_gini", "gini", "ks", "brier", "calibration_ratio", "psi_vs_dev"]].to_dict(),
-                      description=f"6-month PD: {name}")
+                      description=f"Early warning model (worst risk bucket in 6 months): {name}")
 for tgt, slug in [("arrears_3m", "p_arrears_3m"), ("forbearance_6m", "p_forbearance_6m"), ("cure_2m", "propensity_to_pay"),
                   ("cant_pay", "cant_pay_vs_wont_pay")]:
     registry.register(slug, dict(bundles[tgt], name=slug), stage="Champion", family=slug, approach="Gradient boosting (LightGBM)",

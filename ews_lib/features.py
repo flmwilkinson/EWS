@@ -157,6 +157,20 @@ SCORECARD_FEATURES = [
     "dsr", "bureau_score", "searches_3m", "ext_worst_6m", "unemp_chg_12m", "hardship_notes_3m",
 ]
 
+# Signals the real-time service updates from event streams as they happen: current account transactions,
+# card cash advances, credit bureau triggers and contact centre notes. Everything else comes from the
+# monthly card statement, the monthly bureau refresh, other products and macro data.
+REALTIME_SIGNALS = [
+    "salary_missing_3m", "income_chg_vs_6m", "salary_days_late", "od_days", "od_days_chg_3m", "od_peak_util",
+    "returned_dd_3m", "gambling_share", "gambling_chg_3m", "bnpl_share", "payday_lender_3m", "income_drop_x_od",
+    "cash_adv_months_3m", "cash_adv_to_limit_3m",
+    "searches_3m", "ext_arrears_now", "util_x_searches",
+    "sentiment_3m", "hardship_notes_3m", "refusal_notes_3m",
+]
+
+RISK_BUCKETS = {0: "Up to date", 1: "1 cycle delinquent (30 days)", 2: "2 cycles delinquent (60 days)",
+                3: "3+ cycles delinquent (90+ days)", 4: "Charged off"}
+
 
 def feature_dictionary_frame():
     return pd.DataFrame(FEATURE_DICTIONARY, columns=["feature", "family", "kind", "description"])
@@ -361,9 +375,11 @@ def build_panel(s: dict, first_feature_month="2024-10-01") -> pd.DataFrame:
         F[col] = pd.DataFrame(np.repeat(cust[col].astype(float).values[:, None], len(months), 1), index=idx, columns=months)
     F["tenure_months"] = F["tenure_months"] + np.arange(len(months))[None, :]
 
-    # ---- targets (forward looking) ---------------------------------------------------
-    bad_now = (cyc >= 2) | (co > 0)
-    fut_bad = _lead_max(((cyc >= 2) | (co > 0)).astype(float), 6)
+    # ---- targets (forward looking), labelled from historical risk buckets ------------------
+    bucket = cyc.clip(upper=3).where(co == 0, 4.0)   # 0 up to date, 1-3 cycles delinquent (3 = 3+), 4 charged off
+    bad_now = bucket >= 2
+    fut_bucket = _lead_max(bucket, 6)                 # worst risk bucket reached in the next 6 months
+    fut_bad = (fut_bucket >= 2).astype(float).where(fut_bucket.notna())
     fut_miss3 = _lead_max(miss, 3)
     fe = s["forbearance_events"].copy()
     fe["month"] = pd.to_datetime(fe.start_month)
@@ -372,6 +388,8 @@ def build_panel(s: dict, first_feature_month="2024-10-01") -> pd.DataFrame:
     fut_forb = _lead_max(forb_start, 6)
     cyc_next2 = pd.DataFrame(np.fmin(cyc.shift(-1, axis=1).values, cyc.shift(-2, axis=1).values), index=idx, columns=months)
     T = {}
+    F["risk_bucket"] = bucket
+    T["worst_bucket_6m"] = fut_bucket.where(~bad_now)
     T["bad_6m"] = fut_bad.where(~bad_now)
     T["arrears_3m"] = fut_miss3.where((cyc == 0) & (co == 0))
     T["forbearance_6m"] = fut_forb.where((forb == 0) & (co == 0))
@@ -389,7 +407,7 @@ def build_panel(s: dict, first_feature_month="2024-10-01") -> pd.DataFrame:
     panel = panel[panel.month >= pd.Timestamp(first_feature_month)]
     # Horizon availability: targets are only observable where the window has closed
     last = max(months)
-    for tgt, h in [("bad_6m", 6), ("arrears_3m", 3), ("forbearance_6m", 6), ("cure_2m", 2)]:
+    for tgt, h in [("bad_6m", 6), ("worst_bucket_6m", 6), ("arrears_3m", 3), ("forbearance_6m", 6), ("cure_2m", 2)]:
         panel.loc[panel.month > last - pd.DateOffset(months=h), tgt] = np.nan
     panel = panel.replace([np.inf, -np.inf], np.nan)
     return panel.reset_index(drop=True)

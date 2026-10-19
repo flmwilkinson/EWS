@@ -1,7 +1,7 @@
 """Record the demo videos of Early Warning Studio.
 
-    python scripts/record_demo.py --story build              two-minute story: process, dashboard, queue a run, the code, live results
-    python scripts/record_demo.py --story tour               product tour: a fresh pipeline run on camera, notebooks, official APIs, live, customer
+    python scripts/record_demo.py --story build              two-minute story: process, dashboard, queue a run, the code, compare runs, live, customer
+    python scripts/record_demo.py --story tour               product tour: a fresh pipeline run on camera, a notebook, compare runs, official APIs, live, customer
     python scripts/record_demo.py --story tour --keep-data   tour without the reset and pipeline run
 
 Needs the app running (python -m server), Playwright (pip install playwright) with Microsoft Edge or
@@ -11,7 +11,8 @@ Writes to recordings/, for each story:
     early_warning_studio_<story>.mp4         with captions
     early_warning_studio_<story>_clean.mp4   no captions, for your own voiceover
 
-The build story needs a finished full pipeline run (Workflows > Run pipeline) before it starts.
+The build story needs a finished full pipeline run (Workflows > Run pipeline) before it starts. Both stories compare
+the latest run with the last run whose model training code was different: see RECORDING.md for preparing that run.
 
 How it works: the browser's screencast sends a frame whenever the screen changes; each frame is saved with its
 timestamp, then ffmpeg rebuilds a constant 30 fps video from those timestamps. The pipeline run is a time-lapse
@@ -69,10 +70,6 @@ CURSOR_JS = r"""
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install); else install();
 })();
 """
-
-CARD_CSS = ("position:fixed;inset:0;z-index:2147483646;display:grid;place-items:center;background:radial-gradient(1200px 600px at 30% 20%,#1d2a44,#0c1424 70%);"
-            "color:#fff;font-family:Inter,system-ui,sans-serif;transition:opacity .7s ease")
-
 
 def api(method, path, body=None, timeout=30):
     req = urllib.request.Request(BASE + path, method=method, data=None if body is None else json.dumps(body).encode(),
@@ -198,31 +195,6 @@ class Hand:
         await self.scroll(selector, dy, dur)
 
 
-async def card(page, html, show=True):
-    if show:
-        await page.evaluate("([html, css]) => { const d = document.createElement('div'); d.id = '__card'; d.setAttribute('style', css); d.innerHTML = html; document.documentElement.appendChild(d); }",
-                            [html, CARD_CSS])
-    else:
-        await page.evaluate("() => { const d = document.getElementById('__card'); if (d) { d.style.opacity = '0'; setTimeout(() => d.remove(), 800); } }")
-
-
-TITLE = """<div style="text-align:center">
-  <div style="width:72px;height:72px;border-radius:18px;margin:0 auto 26px;display:grid;place-items:center;background:linear-gradient(140deg,#2a78d6,#6250d6)">
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
-  <div style="font-size:64px;font-weight:700;letter-spacing:-.02em">Early Warning Studio</div>
-  <div style="font-size:30px;color:#c7cfdc;margin-top:12px">Real-time early warning for a retail card book</div>
-  <div style="font-size:20px;color:#8a96ab;margin-top:28px">Pipeline · models · live signals · decisions · AI explanations</div></div>"""
-
-END = """<div style="text-align:center">
-  <div style="font-size:24px;color:#8a96ab;letter-spacing:.12em;text-transform:uppercase">One set of signals</div>
-  <div style="font-size:54px;font-weight:700;letter-spacing:-.02em;margin-top:14px">Six decisions, in real time</div>
-  <div style="display:flex;gap:14px;justify-content:center;margin-top:34px;font-size:22px">
-    <span style="padding:10px 18px;border-radius:999px;background:#1d2a44">Limits</span><span style="padding:10px 18px;border-radius:999px;background:#1d2a44">Pricing</span>
-    <span style="padding:10px 18px;border-radius:999px;background:#1d2a44">Exposure</span><span style="padding:10px 18px;border-radius:999px;background:#1d2a44">Offers</span>
-    <span style="padding:10px 18px;border-radius:999px;background:#1d2a44">Support</span><span style="padding:10px 18px;border-radius:999px;background:#1d2a44">Collections</span></div>
-  <div style="font-size:22px;color:#c7cfdc;margin-top:40px">Early Warning Studio · Python · Claude</div></div>"""
-
-
 # ---------------------------------------------------------------------------
 # The take
 # ---------------------------------------------------------------------------
@@ -251,8 +223,33 @@ async def preroll_live(day=LIVE_PREROLL_DAY):
     await asyncio.sleep(1.0)
 
 
-BUILD_TITLE = TITLE.replace("Real-time early warning for a retail card book", "Building a real-time early warning system").replace(
-    "Pipeline · models · live signals · decisions · AI explanations", "From source data to decisions, in one pipeline")
+async def scroll_to_cell(page, hand: Hand, title, offset=70, dur=1.6):
+    """Scroll the notebook so the cell with this title sits near the top."""
+    dy = await page.evaluate("""([t, off]) => { const el = [...document.querySelectorAll('.cell-title input')].find((i) => i.value === t);
+        const c = document.querySelector('.ws-main'); if (!el || !c) return 0; return el.closest('.cell').getBoundingClientRect().top - c.getBoundingClientRect().top - off; }""",
+                             [title, offset])
+    await hand.scroll(".ws-main", dy, dur)
+
+
+async def compare_scene(page, hand: Hand, nav):
+    """Workflows > Compare: the code change and the results of two runs, side by side."""
+    await hand.click(nav("Workflows"))
+    await page.wait_for_selector(".node")
+    await asyncio.sleep(0.6)
+    await hand.click(page.locator(".seg button", has_text="Compare").first)
+    await page.wait_for_selector(".cmp-run", timeout=20000)
+    await asyncio.sleep(0.7)
+    await hand.move(W * 0.5, H * 0.62, 0.5)
+    await hand.scroll_to(".content", ".cmp-run", 74, 1.4)
+    await asyncio.sleep(0.6)
+    await hand.to(page.locator(".cmp-lines .add").first, 0.7)
+    await asyncio.sleep(2.2)
+    await hand.to(page.locator(".cmp-table tbody tr").nth(2), 0.8, dx=120)
+    await asyncio.sleep(2.2)
+    await hand.to(page.locator(".cmp-table tr", has_text="On the watchlist").first, 0.8, dx=120)
+    await asyncio.sleep(1.4)
+    await hand.to(page.locator(".cmp-table tr", has_text="Bad customers flagged").first, 0.7, dx=120)
+    await asyncio.sleep(1.8)
 
 
 async def take_build(page, rec: Recorder, hand: Hand):
@@ -267,138 +264,95 @@ async def take_build(page, rec: Recorder, hand: Hand):
     full = runs[0]["run_id"]
     await page.evaluate("(id) => [...document.querySelectorAll('.tbl tbody tr')].find((tr) => tr.textContent.includes(id))?.click()", full)
     await asyncio.sleep(2.5)
-
-    # title
-    await card(page, BUILD_TITLE)
-    await asyncio.sleep(0.8)
+    await hand.move(W * 0.12, H * 0.42, 0.2)
     await rec.begin(page)
-    await asyncio.sleep(3.2)
-    await card(page, "", show=False)
-    await asyncio.sleep(0.8)
+    await asyncio.sleep(1.2)
 
-    # 1. the process: glide along the pipeline, pausing on the steps that matter
-    rec.caption("1 · The process: one pipeline from source data to real-time decisions, every step a notebook")
-    await asyncio.sleep(0.6)
+    # 1. the process
+    rec.caption("1 · A credit card early warning system: eleven pipeline steps, each one a notebook")
     key_steps = {"dq", "features", "models", "score", "publish"}
     for key in ["generate", "ingest", "dq", "dq_commentary", "features", "thresholds", "models", "score", "monitoring", "monitoring_commentary", "publish"]:
         await hand.to(page.locator(".node").nth(order.index(key)), 0.4)
-        await asyncio.sleep(0.85 if key in key_steps else 0.35)
-    await asyncio.sleep(1.2)
+        await asyncio.sleep(0.6 if key in key_steps else 0.2)
+    await asyncio.sleep(0.6)
     rec.close_caption()
 
     # 2. the dashboard
-    rec.caption("2 · The dashboard: where the book sits, what is driving it, and an AI-written summary for the CRO")
+    rec.caption("2 · The card book by risk tier, the main drivers, and an AI summary for the CRO")
     await hand.click(nav("Portfolio overview"))
     await page.wait_for_selector(".kpi")
-    await asyncio.sleep(2.6)
-    await hand.move(W * 0.55, H * 0.5, 0.7)
-    await asyncio.sleep(0.6)
-    await hand.scroll(".content", 560, 2.6)
-    await asyncio.sleep(5.0)
-    await hand.scroll(".content", 640, 2.4)
     await asyncio.sleep(2.0)
-    rec.close_caption()
-
-    # 3. queue a run
-    rec.caption("3 · Queue a run: retrain and compare the six models on demand")
-    await hand.click(nav("Workflows"))
-    await page.wait_for_selector(".node")
-    await asyncio.sleep(0.8)
-    await hand.click(page.locator(".node").nth(order.index("models")))
-    await asyncio.sleep(1.4)
-    await hand.click(page.get_by_role("button", name="Run task"))
-    await asyncio.sleep(3.0)
-    rec.close_caption()
-
-    # 4. the code
-    rec.caption("4 · The code: each cell runs in order and turns green, with its output as it happens")
-    await hand.click(page.get_by_role("link", name="Open notebook"))
-    await page.wait_for_selector(".cell-box")
-    await asyncio.sleep(1.2)
-    dy = await page.evaluate("""() => { const el = [...document.querySelectorAll('.cell-title input')].find((i) => i.value === 'Train the six PD approaches');
-        const c = document.querySelector('.ws-main'); if (!el || !c) return 600; return el.closest('.cell').getBoundingClientRect().top - c.getBoundingClientRect().top - 70; }""")
-    await hand.move(W * 0.62, H * 0.62, 0.6)
-    await hand.scroll(".ws-main", dy, 1.6)
-    await asyncio.sleep(8.0)
-    await hand.scroll(".ws-main", 900, 2.6)
+    await hand.move(W * 0.55, H * 0.5, 0.6)
+    await hand.scroll(".content", 560, 2.2)
+    await asyncio.sleep(3.8)
+    await hand.scroll(".content", 640, 2.0)
     await asyncio.sleep(1.0)
     rec.close_caption()
 
-    # 5. the result, live
-    rec.caption("5 · The result: every event re-scored in real time, customers escalated, explained and acted on")
+    # 3. queue a run
+    rec.caption("3 · Run any step on demand: here, retrain the models")
+    await hand.click(nav("Workflows"))
+    await page.wait_for_selector(".node")
+    await asyncio.sleep(0.7)
+    await hand.click(page.locator(".node").nth(order.index("models")))
+    await asyncio.sleep(1.2)
+    await hand.click(page.get_by_role("button", name="Run task"))
+    await asyncio.sleep(1.8)
+    rec.close_caption()
+
+    # 4. the code
+    rec.caption("4 · Target labels come from historical risk buckets; inputs combine monthly and real-time data")
+    await hand.click(page.get_by_role("link", name="Open notebook"))
+    await page.wait_for_selector(".cell-box")
+    await asyncio.sleep(1.0)
+    await hand.move(W * 0.6, H * 0.36, 0.6)
+    await asyncio.sleep(2.4)
+    await hand.move(W * 0.62, H * 0.62, 0.4)
+    await scroll_to_cell(page, hand, "Settings and data", 60, 1.2)
+    await asyncio.sleep(2.2)
+    await scroll_to_cell(page, hand, "Target labels from historical risk buckets", 60, 1.0)
+    await asyncio.sleep(2.0)
+    rec.close_caption()
+    rec.caption("Each cell turns green when it runs, with its output underneath")
+    await scroll_to_cell(page, hand, "Train the six model approaches", 60, 1.0)
+    await asyncio.sleep(3.4)
+    rec.close_caption()
+
+    # 5. compare runs
+    rec.caption("5 · Compare runs: monthly data only (A) against monthly plus real-time signals (B)")
+    await compare_scene(page, hand, nav)
+    rec.close_caption()
+
+    # 6. real time
+    rec.caption("6 · Real time: each new card, current account and bureau event is scored as it arrives")
     await hand.click(nav("Live monitor"))
     await page.wait_for_selector(".persona-card")
-    await asyncio.sleep(1.2)
+    await asyncio.sleep(0.8)
     await hand.click(page.get_by_role("button", name="Resume"))
-    await asyncio.sleep(3.2)
-    await hand.move(W * 0.6, H * 0.5, 1.0)
-    await asyncio.sleep(5.5)
-    await hand.to(page.locator(".persona-card", has_text=DEMO_CUSTOMER).first, 1.0)
-    await asyncio.sleep(1.6)
+    await asyncio.sleep(2.8)
+    await hand.move(W * 0.6, H * 0.5, 0.9)
+    await asyncio.sleep(4.6)
+    await hand.to(page.locator(".persona-card", has_text=DEMO_CUSTOMER).first, 0.9)
+    await asyncio.sleep(1.0)
     rec.close_caption()
 
-    # customer drill-down
-    rec.caption("Every alert drills down to the customer: why, what changed, and what each part of the bank does next")
+    # 7. the customer
+    rec.caption("7 · Customer view: why the customer is flagged, what changed and the recommended actions")
     await hand.click(page.locator(".persona-card", has_text=DEMO_CUSTOMER).first, 0.4)
     await page.wait_for_selector(".c360-head")
-    await asyncio.sleep(8.5)
-    await hand.move(W * 0.78, H * 0.45, 0.9)
-    await asyncio.sleep(2.6)
-    await hand.scroll(".content", 640, 2.6)
-    await asyncio.sleep(3.0)
+    await asyncio.sleep(7.0)
+    await hand.move(W * 0.78, H * 0.45, 0.8)
+    await asyncio.sleep(1.6)
+    await hand.scroll(".content", 640, 2.4)
+    await asyncio.sleep(2.0)
     rec.close_caption()
-
-    await card(page, END)
-    await asyncio.sleep(4.0)
+    await asyncio.sleep(1.4)
     rec.end()
     api("POST", "/api/live/pause")
     # The queued run registered new model versions; publish so the real-time service serves exactly what is in the registry.
     await wait_for(lambda: api("GET", "/api/runs?limit=1")[0]["status"] != "RUNNING", 400)
     api("POST", "/api/runs", {"scope": "only", "task": "publish"})
     print("Re-published the champions to the real-time service")
-
-
-async def take_tour_tail(page, rec: Recorder, hand: Hand):
-    """The tour from the live monitor onwards, starting on the Connectors page (for re-shooting the tour's ending)."""
-    nav = lambda label: page.locator("a.nav-item", has_text=label).first
-    await preroll_live()
-    await page.goto(BASE + "/#/connectors")
-    await page.wait_for_selector(".conn-card")
-    await asyncio.sleep(2.5)
-    await hand.move(W * 0.6, H * 0.6, 0.3)
-    await rec.begin(page)
-    await asyncio.sleep(0.8)
-    rec.caption("Real time: every event is re-scored as it arrives, and customers move through the watchlist")
-    await hand.click(nav("Live monitor"))
-    await page.wait_for_selector(".persona-card")
-    await asyncio.sleep(2.0)
-    await hand.click(page.get_by_role("button", name="Resume"))
-    await asyncio.sleep(3.0)
-    await hand.move(W * 0.42, H * 0.55, 1.2)
-    await asyncio.sleep(5.0)
-    rec.close_caption()
-    rec.caption("Alerts carry the evidence, the action, and an explanation written by Claude as it happens")
-    await hand.move(W * 0.62, H * 0.5, 1.2)
-    await asyncio.sleep(7.0)
-    await hand.to(page.locator(".persona-card", has_text=DEMO_CUSTOMER).first, 1.2)
-    await asyncio.sleep(3.0)
-    rec.close_caption()
-    rec.caption(f"Drill into any customer: why {DEMO_CUSTOMER} is flagged, what changed, and what each part of the bank does next")
-    await hand.click(page.locator(".persona-card", has_text=DEMO_CUSTOMER).first, 0.4)
-    await page.wait_for_selector(".c360-head")
-    await asyncio.sleep(9.0)
-    rec.close_caption()
-    rec.caption("Five models, the drivers behind the PD, and every trigger against its thresholds")
-    await hand.move(W * 0.5, H * 0.6, 0.6)
-    await hand.scroll(".content", 600, 3.2)
-    await asyncio.sleep(3.5)
-    await hand.scroll(".content", 560, 3.0)
-    await asyncio.sleep(4.0)
-    rec.close_caption()
-    await card(page, END)
-    await asyncio.sleep(4.5)
-    rec.end()
-    api("POST", "/api/live/pause")
 
 
 async def take(page, rec: Recorder, hand: Hand, keep_data: bool):
@@ -410,24 +364,19 @@ async def take(page, rec: Recorder, hand: Hand, keep_data: bool):
     except Exception:
         pass
     if not keep_data:
-        print("Resetting the environment")
-        api("POST", "/api/admin/reset", {"clear_history": True})
+        print("Resetting the environment (run history is kept, for the comparison)")
+        api("POST", "/api/admin/reset", {"clear_history": False})
     await page.goto(BASE + "/#/workflows")
     await page.wait_for_selector(".node", timeout=30000)
     await asyncio.sleep(2.5)
-
-    # ---- 1. title -------------------------------------------------------------------------
-    await card(page, TITLE)
-    await asyncio.sleep(0.8)
+    await hand.move(W * 0.7, H * 0.3, 0.2)
     await rec.begin(page)
-    await asyncio.sleep(3.6)
-    await card(page, "", show=False)
-    await asyncio.sleep(0.9)
+    await asyncio.sleep(1.2)
 
-    # ---- 2. the pipeline ------------------------------------------------------------------
+    # ---- the pipeline ---------------------------------------------------------------------
     if not keep_data:
-        rec.caption("The monthly EWS pipeline: eleven tasks, each an editable notebook. Every task starts as a red cross")
-        await asyncio.sleep(2.5)
+        rec.caption("The credit card early warning pipeline: eleven steps, each an editable notebook")
+        await asyncio.sleep(2.4)
         await hand.click(page.get_by_role("button", name="Run pipeline"))
         await asyncio.sleep(1.2)
         rec.close_caption()
@@ -438,8 +387,7 @@ async def take(page, rec: Recorder, hand: Hand, keep_data: bool):
             st.textContent = '*, *::before, *::after { animation: none !important; transition: none !important; }';
             document.head.appendChild(st); }""")  # spinners strobe when sped up; hold them still for the time-lapse
         await rec.begin(page, target=TIMELAPSE_SECONDS)
-        rec.caption("Data, quality checks, features, thresholds, six models, scoring, monitoring, AI commentary: shown {speed}× faster")
-        timelapse_caption = len(rec.captions) - 1
+        rec.caption("Running: data load, quality checks, features, thresholds, models, scoring, monitoring and AI commentary")
         order = [t["key"] for t in api("GET", "/api/jobs/pipeline")["tasks"]]
         shown, t0 = None, time.time()
         while time.time() - t0 < 1200:  # about 7 minutes under recording load; leave headroom
@@ -453,8 +401,7 @@ async def take(page, rec: Recorder, hand: Hand, keep_data: bool):
                 await page.evaluate("(i) => document.querySelectorAll('.node')[i]?.click()", order.index(shown))
             await asyncio.sleep(1.0)
         rec.close_caption()
-        speed = rec.end()
-        rec.captions[timelapse_caption][0] = rec.captions[timelapse_caption][0].replace("{speed}", str(round(speed)))
+        rec.end()
         await page.evaluate("() => { const c = document.getElementById('__cursor'); if (c) c.style.opacity = '1'; document.getElementById('__still')?.remove(); }")
         status = api("GET", "/api/runs?limit=1")[0]["status"]
         print("Pipeline", status)
@@ -462,32 +409,42 @@ async def take(page, rec: Recorder, hand: Hand, keep_data: bool):
             raise SystemExit("The pipeline did not succeed; fix that before recording (see Workflows).")
         await asyncio.sleep(2.0)
         await rec.begin(page)
-        rec.caption("All eleven tasks green, with the run history, rows written and every AI call recorded")
+        rec.caption("All steps complete. Each run records the rows written and the AI calls made")
         await hand.move(W * 0.62, H * 0.33, 0.9)
         await asyncio.sleep(3.2)
         rec.close_caption()
     else:
-        rec.caption("The monthly EWS pipeline: eleven tasks, each an editable notebook, with run history")
+        rec.caption("The credit card early warning pipeline: eleven steps, each an editable notebook")
         await asyncio.sleep(4.0)
         rec.close_caption()
 
-    # ---- 3. a notebook ----------------------------------------------------------------------
-    rec.caption("Every task is a notebook: the code, its output and the tables it writes, editable and re-runnable")
+    # ---- a notebook ----------------------------------------------------------------------------
+    rec.caption("Each step is a notebook: the code, its output and the tables it writes")
     await hand.click(nav("Workspace"))
     await page.wait_for_selector(".ws-file")
     await asyncio.sleep(1.0)
     await hand.click(page.locator(".ws-file", has_text="07_train_models.py"))
     await page.wait_for_selector(".cell-box .outputs", timeout=20000)
-    await asyncio.sleep(1.8)
-    await hand.move(W * 0.66, H * 0.62, 0.6)
-    await hand.scroll(".ws-main", 820, 3.4)
+    await asyncio.sleep(1.4)
+    await hand.move(W * 0.6, H * 0.36, 0.7)
+    await asyncio.sleep(2.4)
+    rec.close_caption()
+    rec.caption("Target labels come from historical risk buckets; inputs combine monthly and real-time data")
     await asyncio.sleep(1.6)
-    await hand.scroll(".ws-main", 900, 3.6)
-    await asyncio.sleep(1.8)
+    await hand.move(W * 0.66, H * 0.62, 0.5)
+    await scroll_to_cell(page, hand, "Target labels from historical risk buckets", 60, 1.8)
+    await asyncio.sleep(3.0)
+    await scroll_to_cell(page, hand, "Choose the champion", 60, 2.0)
+    await asyncio.sleep(3.0)
     rec.close_caption()
 
-    # ---- 4. official sources ----------------------------------------------------------------
-    rec.caption("Live connectors to official data: Bank of England, ONS and HM Land Registry APIs")
+    # ---- compare runs ----------------------------------------------------------------------------
+    rec.caption("Compare runs: monthly data only (A) against monthly plus real-time signals (B)")
+    await compare_scene(page, hand, nav)
+    rec.close_caption()
+
+    # ---- official sources ----------------------------------------------------------------------
+    rec.caption("Official data feeds: Bank of England, ONS and HM Land Registry")
     await hand.click(nav("Connectors"))
     await page.wait_for_selector(".conn-card")
     await asyncio.sleep(1.4)
@@ -505,9 +462,9 @@ async def take(page, rec: Recorder, hand: Hand, keep_data: bool):
     # ---- pre-roll the live feed (not recorded) ---------------------------------------------
     await preroll_live()
 
-    # ---- 5. live ------------------------------------------------------------------------------
+    # ---- live ------------------------------------------------------------------------------------
     await rec.begin(page)
-    rec.caption("Real time: every event is re-scored as it arrives, and customers move through the watchlist")
+    rec.caption("Real time: each new card, current account and bureau event is scored as it arrives")
     await hand.click(nav("Live monitor"))
     await page.wait_for_selector(".persona-card")
     await asyncio.sleep(2.0)
@@ -516,30 +473,27 @@ async def take(page, rec: Recorder, hand: Hand, keep_data: bool):
     await hand.move(W * 0.42, H * 0.55, 1.2)
     await asyncio.sleep(5.0)
     rec.close_caption()
-    rec.caption("Alerts carry the evidence, the action, and an explanation written by Claude as it happens")
+    rec.caption("Each alert shows the signals, the recommended action and an AI explanation")
     await hand.move(W * 0.62, H * 0.5, 1.2)
     await asyncio.sleep(7.0)
     await hand.to(page.locator(".persona-card", has_text=DEMO_CUSTOMER).first, 1.2)
     await asyncio.sleep(3.0)
     rec.close_caption()
 
-    # ---- 6. customer 360 -------------------------------------------------------------------------
-    rec.caption(f"Drill into any customer: why {DEMO_CUSTOMER} is flagged, what changed, and what each part of the bank does next")
+    # ---- customer view ---------------------------------------------------------------------------
+    rec.caption(f"Customer view: why {DEMO_CUSTOMER} is flagged, what changed and the recommended actions")
     await hand.click(page.locator(".persona-card", has_text=DEMO_CUSTOMER).first, 0.4)
     await page.wait_for_selector(".c360-head")
     await asyncio.sleep(9.0)
     rec.close_caption()
-    rec.caption("Five models, the drivers behind the PD, and every trigger against its thresholds")
+    rec.caption("Model drivers, and each trigger against its amber and red thresholds")
     await hand.move(W * 0.5, H * 0.6, 0.6)
     await hand.scroll(".content", 600, 3.2)
     await asyncio.sleep(3.5)
     await hand.scroll(".content", 560, 3.0)
-    await asyncio.sleep(4.0)
+    await asyncio.sleep(3.4)
     rec.close_caption()
-
-    # ---- 7. end card -------------------------------------------------------------------------------
-    await card(page, END)
-    await asyncio.sleep(4.5)
+    await asyncio.sleep(1.6)
     rec.end()
     api("POST", "/api/live/pause")
 
@@ -559,7 +513,8 @@ def encode(rec: Recorder, frames_dir: pathlib.Path, out_dir: pathlib.Path, name:
         alpha = f"if(lt(t,{a + 0.35:.2f}),(t-{a:.2f})/0.35,if(gt(t,{b - 0.35:.2f}),({b:.2f}-t)/0.35,1))"
         draws.append(f"drawtext=fontfile='{font}':textfile=cap{i}.txt:fontsize=30:fontcolor=white:box=1:boxcolor=0x0c1424@0.86:boxborderw=20:"
                      f"x=(w-text_w)/2:y=h-text_h-64:enable='between(t,{a:.2f},{b:.2f})':alpha='{alpha}'")
-    base = f"fps={FPS},scale={W}:{H}:flags=lanczos,format=yuv420p"
+    fade = f"fade=t=in:st=0:d=0.8,fade=t=out:st={max(total - 1.2, 0):.2f}:d=1.2"  # fade in from and out to black
+    base = f"fps={FPS},scale={W}:{H}:flags=lanczos,{fade},format=yuv420p"
     out_dir.mkdir(exist_ok=True)
     for suffix, vf in [("_clean", base), ("", ",".join([base] + draws))]:
         out = out_dir / f"early_warning_studio_{name}{suffix}.mp4"
@@ -595,14 +550,12 @@ async def main(story: str, keep_data: bool):
         try:
             if story == "build":
                 await take_build(page, rec, hand)
-            elif story == "tour-tail":
-                await take_tour_tail(page, rec, hand)
             else:
                 await take(page, rec, hand, keep_data)
         finally:
             await cdp.send("Page.stopScreencast")
             await browser.close()
-    encode(rec, work, OUT, {"build": "2min", "tour": "tour", "tour-tail": "tourtail"}[story])
+    encode(rec, work, OUT, {"build": "2min", "tour": "tour"}[story])
     shutil.rmtree(work, ignore_errors=True)
 
 
@@ -617,8 +570,7 @@ def keep_awake():
 if __name__ == "__main__":
     keep_awake()
     ap = argparse.ArgumentParser()
-    ap.add_argument("--story", choices=["build", "tour", "tour-tail"], default="build",
-                    help="build: the two-minute story; tour: the product tour; tour-tail: re-shoot the tour from the live monitor on")
+    ap.add_argument("--story", choices=["build", "tour"], default="build", help="build: the two-minute story; tour: the product tour")
     ap.add_argument("--keep-data", action="store_true", help="tour only: skip the reset and pipeline run")
     a = ap.parse_args()
     asyncio.run(main(a.story, a.keep_data))

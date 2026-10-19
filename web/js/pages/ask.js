@@ -51,7 +51,7 @@ export default {
     return { msgs, input, ask, key, busy, SUGGEST, scroller, parts, F, store };
   },
   template: `<div style="height:100%;display:flex;flex-direction:column">
-  <div class="page-head"><div><div class="eyebrow">Claude with a read-only SQL tool · {{ store.health?.llm?.model }}</div><h1>Ask the EWS</h1>
+  <div class="page-head"><div><div class="eyebrow">AI with a read-only SQL tool</div><h1>Ask the EWS</h1>
     <p>Questions in plain English, answered from the lakehouse and the live position. Every query the assistant runs is shown, so analysts can check the numbers.</p></div></div>
   <div ref="scroller" style="flex:1;overflow:auto;min-height:300px">
     <div class="chat">
@@ -71,7 +71,7 @@ export default {
                 <pre v-if="p.step.result?.error" style="color:var(--bad-text)">{{ p.step.result.error }}</pre></details>
             </template>
             <div v-if="m.streaming && !m.content" class="row small muted"><StatusIcon status="running" :size="14" />Thinking…</div>
-            <div v-if="m.meta?.model" class="tiny muted" style="margin-top:6px">{{ m.meta.model }} · {{ (m.meta.latency_ms / 1000).toFixed(1) }}s · {{ m.steps.length }} queries · {{ F.n((m.meta.input_tokens || 0) + (m.meta.output_tokens || 0)) }} tokens</div>
+            <div v-if="m.meta?.model" class="tiny muted" style="margin-top:6px">AI · {{ (m.meta.latency_ms / 1000).toFixed(1) }}s · {{ m.steps.length }} queries · {{ F.n((m.meta.input_tokens || 0) + (m.meta.output_tokens || 0)) }} tokens</div>
           </template></div>
       </div>
     </div>

@@ -519,3 +519,24 @@ pre.json { margin: 0; font-family: var(--mono); font-size: 12px; background: var
 ::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--text-3) 30%, transparent); border-radius: 6px; border: 2px solid transparent; background-clip: padding-box; }
 ::-webkit-scrollbar-thumb:hover { background-color: color-mix(in srgb, var(--text-3) 50%, transparent); }
 ::-webkit-scrollbar-track { background: transparent; }
+
+/* Compare runs */
+.cmp-run { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface-2); }
+.cmp-tag { width: 24px; height: 24px; border-radius: 6px; display: grid; place-items: center; font-weight: 700; font-size: 12px; color: #fff; flex: none; }
+.cmp-tag.a { background: #6b7280; } .cmp-tag.b { background: var(--accent); }
+.cmp-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 18px; align-items: start; }
+@media (max-width: 1000px) { .cmp-grid { grid-template-columns: 1fr; } }
+.cmp-none { padding: 10px 12px; border: 1px dashed var(--border-strong); border-radius: 8px; }
+.cmp-diff { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 10px; }
+.cmp-diff-head { display: flex; gap: 8px; align-items: center; padding: 7px 10px; background: var(--surface-2); border-bottom: 1px solid var(--border); font-size: 12.5px; }
+.cmp-lines { margin: 0; padding: 4px 0; background: var(--code-bg); font-family: var(--mono); font-size: 12px; line-height: 1.55; max-height: 300px; overflow: auto; }
+.cmp-lines > div { padding: 0 10px; white-space: pre; }
+.cmp-lines .add { background: var(--ok-soft); color: var(--ok-text); }
+.cmp-lines .del { background: var(--bad-soft); color: var(--bad-text); }
+.cmp-lines .hunk { color: var(--text-3); }
+.cmp-lines .ctx { color: var(--text-2); }
+.cmp-table .cmp-group td { background: var(--surface-2); color: var(--text-3); font-size: 11.5px; font-weight: 600; letter-spacing: .03em; padding-top: 6px; padding-bottom: 6px; }
+.cmp-table tr.better .cmp-delta { color: var(--ok-text); font-weight: 600; }
+.cmp-table tr.worse .cmp-delta { color: var(--bad-text); font-weight: 600; }
+.cmp-table tr.changed .cmp-delta { color: var(--accent); font-weight: 600; }
+.cmp-table tr.changed td:nth-child(3) { color: var(--accent); }

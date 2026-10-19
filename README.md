@@ -1,9 +1,9 @@
 # Early Warning Studio
 
-A local, Databricks-style platform demonstrating a real-time early warning system (EWI) for a UK retail card book. One Python process serves a web app with two halves:
+A local, Databricks-style platform demonstrating a real-time early warning system (EWS) for a UK credit card book. One Python process serves a web app with two halves:
 
-- **Under the hood**, for modelling and engineering teams: editable pipeline notebooks, a job runner whose DAG flips from red crosses to green ticks as tasks run, run history, a versioned lakehouse catalog with lineage, a SQL editor, a model registry, connectors and real-time APIs.
-- **The EWS itself**, for credit risk and the business: portfolio overview, a live event stream that re-scores customers and escalates them through the watchlist, Customer 360 drill-downs, triggers and KRIs, decisioning across six business uses, data quality and model monitoring. Claude writes the commentary throughout.
+- **Under the hood**, for modelling and engineering teams: editable pipeline notebooks, a job runner whose DAG flips from red crosses to green ticks as tasks run, run history and run comparison, a versioned lakehouse catalog with lineage, a SQL editor, a model registry, connectors and real-time APIs.
+- **The EWS itself**, for credit risk and the business: portfolio overview, a live event stream that re-scores customers and escalates them through the watchlist, Customer 360 drill-downs, triggers and KRIs, decisioning across six business uses, data quality and model monitoring. AI (Claude, through the Anthropic API) writes the commentary throughout.
 
 The bank's own systems (cards, current accounts, bureau, collections and so on) are represented by a calibrated synthetic portfolio. The official macroeconomic connectors (Bank of England, ONS, HM Land Registry) and the Claude connection are real, live calls.
 
@@ -25,7 +25,7 @@ On first launch the dashboards are empty. Open **Workflows** and press **Run pip
 | Folder | Contents |
 |---|---|
 | `pipeline/` | The 11 notebooks the app shows, edits and runs: plain `.py` files with `# %%` cells |
-| `ews_lib/` | The engine: generator, data quality, features, thresholds, six PD models plus secondary models, triggers, watchlist, decisions, monitoring, live simulator, lakehouse, registry, Claude client |
+| `ews_lib/` | The engine: generator, data quality, features, thresholds, six early warning models plus secondary models, triggers, watchlist, decisions, monitoring, live simulator, lakehouse, registry, Claude client |
 | `server/` | FastAPI app, job runner, cell-by-cell kernel, live service, AI endpoints, real-time API |
 | `web/` | Front end (Vue 3, ECharts, CodeMirror; all vendored, so it runs offline apart from Claude) |
 | `data/` | Created at run time: landing files, lakehouse tables, model registry, metadata database |
@@ -38,13 +38,20 @@ On first launch the dashboards are empty. Open **Workflows** and press **Run pip
 
 | Platform | Early warning | AI |
 |---|---|---|
-| **Workflows**: DAG, run history and matrix, live task detail | **Portfolio overview**: ladder, trends, regions, executive summary | **Ask the EWS**: questions answered with read-only SQL, queries shown |
+| **Workflows**: DAG, run history and matrix, compare runs, live task detail | **Portfolio overview**: ladder, trends, regions, executive summary | **Ask the EWS**: questions answered with read-only SQL, queries shown |
 | **Workspace**: edit and run notebooks, revisions | **Live monitor**: events, alerts, personas, inject events | **AI audit log**: every call with prompt, response, tokens, latency |
 | **Catalog**: tables, versions, lineage | **Watchlist** → **Customer 360** | |
 | **SQL editor** | **Triggers and KRIs**: policy vs calibrated thresholds | |
 | **Models**: scorecard vs machine learning, registry | **Decisioning**: six business uses | |
 | **Connectors**: sources in, actions out, live official macro APIs | **Data quality**, **Model monitoring** | |
 | **Real-time APIs**: try-it console, request log, `/docs` | | |
+
+## How the models are built
+
+- **Target labels from historical risk buckets.** Every card account sits in a risk bucket each month: up to date, 1, 2 or 3+ cycles delinquent, or charged off. Each customer-month is labelled with the worst bucket reached in the following six months, and the event is bucket 2+ (60+ days past due) or charge-off. The bucket table is shown in `07_train_models.py`.
+- **Monthly and real-time inputs.** Monthly: the card statement, the bureau refresh, other products and macro. Real-time: the signals the live service updates as events arrive (current account transactions, card cash advances, bureau triggers and contact centre notes; `REALTIME_SIGNALS` in `ews_lib/features.py`). The same models re-score customers between month ends.
+- **Six approaches compared out of time** (weighted scoring, logistic scorecard, decision tree, random forest, LightGBM, neural network), a champion rule, and secondary models for arrears, forbearance, propensity to pay and can't pay versus won't pay.
+- **Compare runs.** Each run records the notebook code it ran and a summary of the results when it finishes. **Workflows → Compare** shows the code diff between two runs and the model, watchlist, early warning and data quality results side by side. To see what real-time data adds, set `USE_REALTIME_SIGNALS = False` in `07_train_models.py`, run from that task, set it back and run again.
 
 ## Recording
 
@@ -57,11 +64,11 @@ For a live session rather than a video. Before you start: in **Workflows**, pres
 1. **Connectors** (1 min). Walk the flow strip: nine sources (Kafka, CDC, REST, SFTP, webhooks) → lakehouse and engine → real-time service → four action feeds. Open a sample payload. Press **Test live call** on the Claude card.
 2. **Workflows** (1 min). Eleven tasks, all red crosses. Press **Run pipeline**, then go to the Workspace while it runs.
 3. **Workspace** (2 min). Open `05_feature_engineering.py` while it runs: cells tick green with their tables and charts appearing underneath. Then open `07_train_models.py`: the six approaches and the champion rule.
-4. **Workflows** (1 min). Back to the DAG as the last ticks land. Click **Train and compare models**: cells, durations, tables read and written. Show the run history and the **Matrix** view.
+4. **Workflows** (1 min). Back to the DAG as the last ticks land. Click **Train and compare models**: cells, durations, tables read and written. Show the run history, the **Matrix** view and **Compare**: pick two runs to see the code that changed between them and the results side by side.
 5. **Data quality → Models** (2 min). The failed rules, remediation and the AI commentary; per-rule "why it matters". On Models: scorecard against machine learning, the neural network's overfitting, ROC and calibration, champion drivers, scorecard points, the registry.
 6. **Live-edit moment, optional** (3 min of run time; cut it in the edit). In `07_train_models.py` set `MAX_GINI_GAP = 0.02`, save, press **Run from here**. The scorecard becomes champion, everything downstream re-runs and the real-time service reloads it. Revert from **Revisions** and run from here again.
 7. **Portfolio overview → Live monitor** (3 min). Press **Start live feed** (Normal speed). Events arrive by source; personas escalate: Priya's salary stops, Dan's gambling grows, Grace's fixed rate ends, Lee's café struggles, Mark is reported by another lender, Sarah stays healthy. Persona alerts carry Claude explanations as they happen. Use **Inject an event** to send a bureau alert for Mark through `POST /api/v1/events`.
-8. **Customer 360** (2 min). Click Priya or Dan: AI explanation, six decisions, model outputs, PD history, drivers, every trigger against its thresholds, October events. Press **Score now via API**.
+8. **Customer 360** (2 min). Click Priya or Dan: AI explanation, six decisions, model outputs, risk tier history, drivers, every trigger against its thresholds, October events. Press **Score now via API**.
 9. **Decisioning → Monitoring → Ask the EWS** (2 min). The decision matrix; the RAG pack and lead time; ask "Which regions have the most customers in Early intervention, and what share lean can't pay?"
 10. **AI audit log** (30 s). Every AI sentence is traceable to its prompt and facts.
 

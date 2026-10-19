@@ -54,8 +54,8 @@ export default {
     return { d, err, k, tierOpt, pdOpt, bandOpt, trigOpt, movesOpt, ladder, F, live, asAt, onTrig, onBand, go, maxWatch, store };
   },
   template: `<div>
-  <div class="page-head"><div><div class="eyebrow">{{ d ? asAt : 'Portfolio' }}</div><h1>Portfolio overview</h1>
-    <p>Where the card book sits on the early warning ladder, how it got there, and what is driving it. Figures update as live events arrive.</p></div>
+  <div class="page-head"><div><div class="eyebrow">{{ d ? asAt : 'Portfolio' }}</div><h1>Credit card portfolio</h1>
+    <p>Where the credit card book sits on the early warning ladder, how it got there and what is driving it. Figures update as live events arrive.</p></div>
     <div class="actions"><a class="btn" href="#/watchlist"><Icon name="list-checks" :size="14" />Watchlist</a><a class="btn primary" href="#/live"><Icon name="activity" :size="14" />Live monitor</a></div></div>
   <NeedPipeline v-if="err" what="the portfolio view" />
   <template v-else-if="d">

@@ -142,20 +142,32 @@ def start_run(body: RunBody):
 @router.get("/runs")
 def list_runs(limit: int = 40):
     rows = SVC["db"].query("SELECT * FROM runs ORDER BY started_at DESC LIMIT ?", (limit,))
+    for r in rows:
+        r["has_summary"] = bool(r.pop("summary", None))
     ids = [r["run_id"] for r in rows]
-    tasks = SVC["db"].query(f"SELECT run_id, task_key, status, duration, rows_written FROM task_runs WHERE run_id IN ({','.join('?' * len(ids))})",
+    tasks = SVC["db"].query(f"SELECT run_id, task_key, status, duration, rows_written, code_hash FROM task_runs WHERE run_id IN ({','.join('?' * len(ids))})",
                             ids) if ids else []
     by = {}
     for t in tasks:
-        by.setdefault(t["run_id"], {})[t["task_key"]] = dict(status=t["status"], duration=t["duration"], rows_written=t["rows_written"])
+        by.setdefault(t["run_id"], {})[t["task_key"]] = dict(status=t["status"], duration=t["duration"], rows_written=t["rows_written"],
+                                                             code_hash=t["code_hash"])
     for r in rows:
         r["tasks"] = json.loads(r["tasks"])
         live = SVC["jobs"].active.get(r["run_id"])
-        r["task_state"] = ({k: dict(status=v["status"], duration=v.get("duration"), rows_written=v.get("rows_written"))
+        r["task_state"] = ({k: dict(status=v["status"], duration=v.get("duration"), rows_written=v.get("rows_written"), code_hash=v.get("code_hash"))
                             for k, v in live["task_state"].items()} if live else by.get(r["run_id"], {}))
         if live:
             r.update(status=live["status"], n_ok=live["n_ok"], n_failed=live["n_failed"], rows_written=live["rows_written"])
     return rows
+
+
+@router.get("/runs/compare")
+def compare_runs(a: str, b: str):
+    from server.run_compare import compare
+    try:
+        return compare(SVC["db"], a, b)
+    except KeyError:
+        raise HTTPException(404, "Run not found")
 
 
 @router.get("/runs/{run_id}")

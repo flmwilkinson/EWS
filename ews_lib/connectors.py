@@ -98,7 +98,7 @@ OUTBOUND = [
          sample={"customer_id": "C900002", "suppress_credit_offers": True, "eligible_offers": [], "reason": "EWS tier 2"}),
 ]
 
-AI = dict(id="claude", name="Anthropic Claude", system="AI commentary and explanations", protocol="HTTPS API",
+AI = dict(id="claude", name="AI model API (Anthropic)", system="AI commentary and explanations", protocol="HTTPS API",
           endpoint="POST https://api.anthropic.com/v1/messages", auth="API key (from .env)", cadence="On demand",
           format="JSON (streamed)")
 

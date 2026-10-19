@@ -134,9 +134,12 @@ class WeightedScore:
     """Each KRI scores 0 (below amber), 0.5 (amber) to 1 (red), linearly between; weighted sum."""
     name = "Weighted scoring model"
 
+    def __init__(self, weights=None):
+        self.weights = dict(weights or EXPERT_WEIGHTS)
+
     def _points(self, X):
         total = np.zeros(len(X))
-        for f, (w, a, r, d) in EXPERT_WEIGHTS.items():
+        for f, (w, a, r, d) in getattr(self, "weights", EXPERT_WEIGHTS).items():
             x = X[f].fillna(a if d > 0 else a).values.astype(float)
             if d < 0:
                 x, a, r = -x, -a, -r
@@ -155,7 +158,7 @@ class WeightedScore:
 
     def contributions(self, X):
         out = {}
-        for f, (w, a, r, d) in EXPERT_WEIGHTS.items():
+        for f, (w, a, r, d) in getattr(self, "weights", EXPERT_WEIGHTS).items():
             x = X[f].fillna(a).values.astype(float)
             aa, rr = (a, r) if d > 0 else (-a, -r)
             xx = x if d > 0 else -x
@@ -254,16 +257,20 @@ def make_lgbm(features, monotone=True, **kw):
     return lgb.LGBMClassifier(**params)
 
 
-def model_zoo():
+def model_zoo(exclude=()):
+    """The six approaches. `exclude` drops features from every model (e.g. the real-time signals)."""
+    keep = lambda feats: [f for f in feats if f not in set(exclude)]
+    weights = {f: v for f, v in EXPERT_WEIGHTS.items() if f not in set(exclude)}
+    ml = keep(ML_FEATURES)
     return {
-        "Weighted scoring model": (WeightedScore(), list(EXPERT_WEIGHTS)),
-        "Logistic regression scorecard": (WoEScorecard(), SCORECARD_FEATURES),
-        "Decision tree": (_sk_pipeline(DecisionTreeClassifier(max_depth=5, min_samples_leaf=300, random_state=7)), ML_FEATURES),
+        "Weighted scoring model": (WeightedScore(weights), list(weights)),
+        "Logistic regression scorecard": (WoEScorecard(keep(SCORECARD_FEATURES)), keep(SCORECARD_FEATURES)),
+        "Decision tree": (_sk_pipeline(DecisionTreeClassifier(max_depth=5, min_samples_leaf=300, random_state=7)), ml),
         "Random forest": (_sk_pipeline(RandomForestClassifier(n_estimators=200, max_depth=9, min_samples_leaf=50,
-                                                               n_jobs=-1, random_state=7, class_weight="balanced_subsample")), ML_FEATURES),
-        "Gradient boosting (LightGBM)": (make_lgbm(ML_FEATURES), ML_FEATURES),
+                                                               n_jobs=-1, random_state=7, class_weight="balanced_subsample")), ml),
+        "Gradient boosting (LightGBM)": (make_lgbm(ml), ml),
         "Neural network (MLP)": (_sk_pipeline(MLPClassifier(hidden_layer_sizes=(64, 32), alpha=1e-3, early_stopping=True,
-                                                            max_iter=200, random_state=7), scale=True), ML_FEATURES),
+                                                            max_iter=200, random_state=7), scale=True), ml),
     }
 
 

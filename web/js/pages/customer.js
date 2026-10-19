@@ -131,12 +131,12 @@ export default {
   </div>
 
   <div class="grid g-3-2 mb">
-    <Card title="PD and tier history" sub="Monthly batch, April 2025 to September 2026; marker colour is the tier that month">
+    <Card title="Risk tier history" sub="Monthly batch, April 2025 to September 2026; marker colour is the tier that month">
       <EChart :option="histOpt" :height="250" />
       <div class="strip mt"><i v-for="(x, i) in tierStrip" :key="i" :style="{ background: x.c }" :title="x.t"></i></div>
       <div class="row tiny muted" style="margin-top:4px"><span>{{ d.history[0]?.month }}</span><span class="spacer"></span><span>{{ d.history[d.history.length - 1]?.month }}</span></div>
     </Card>
-    <Card title="What drives the PD" sub="Champion model contributions to the log-odds: red pushes risk up, green pulls it down">
+    <Card title="What drives the model score" sub="Champion model contributions to the log-odds: red pushes risk up, green pulls it down">
       <EChart v-if="d.drivers.length" :option="driverOpt" :height="300" /><div v-else class="muted small">Model drivers appear once the models are published.</div></Card>
   </div>
 

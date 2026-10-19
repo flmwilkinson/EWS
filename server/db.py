@@ -33,6 +33,9 @@ CREATE TABLE IF NOT EXISTS llm_calls (
     latency_ms INTEGER, first_token_ms INTEGER, input_tokens INTEGER, output_tokens INTEGER,
     run_id TEXT, task TEXT, prompt TEXT, system TEXT, response TEXT, error TEXT
 );
+CREATE TABLE IF NOT EXISTS code_blobs (
+    hash TEXT PRIMARY KEY, path TEXT, content TEXT
+);
 CREATE TABLE IF NOT EXISTS api_calls (
     id INTEGER PRIMARY KEY AUTOINCREMENT, ts REAL, method TEXT, path TEXT, status INTEGER, latency_ms REAL,
     request TEXT, response TEXT
@@ -49,6 +52,9 @@ class DB:
         with self.lock:
             self.con.execute("PRAGMA journal_mode=WAL")
             self.con.executescript(SCHEMA)
+            for table, col in (("runs", "summary"), ("task_runs", "code_hash")):  # columns added after the first release
+                if col not in {r[1] for r in self.con.execute(f"PRAGMA table_info({table})")}:
+                    self.con.execute(f"ALTER TABLE {table} ADD COLUMN {col} TEXT")
             # Runs interrupted by a server restart can never finish
             self.con.execute("UPDATE runs SET status='CANCELLED', note='Server restarted' WHERE status IN ('RUNNING','QUEUED')")
             self.con.execute("UPDATE task_runs SET status='cancelled' WHERE status IN ('running','pending')")
@@ -83,6 +89,13 @@ class DB:
             fields["cells"] = json.dumps(fields["cells"], default=str)
         cols = ", ".join(f"{k}=?" for k in fields)
         self.execute(f"UPDATE task_runs SET {cols} WHERE run_id=? AND task_key=?", (*fields.values(), run_id, task_key))
+
+    def save_code(self, path: str, content: str) -> str:
+        """Store a notebook's source by content hash; returns the hash."""
+        import hashlib
+        h = hashlib.sha1(content.encode("utf-8")).hexdigest()[:16]
+        self.execute("INSERT OR IGNORE INTO code_blobs (hash, path, content) VALUES (?,?,?)", (h, path, content))
+        return h
 
     # -- audit ------------------------------------------------------------------
     def log_llm(self, r: dict):

@@ -119,7 +119,7 @@ export default {
       <div><div class="eyebrow">Real-time service</div>
         <div class="arch-box" :class="{ on: liveOn }"><Icon name="activity" :size="13" />Event processing<span class="count">{{ F.n(totalIn) }}</span></div>
         <div class="arch-box"><Icon name="zap" :size="13" />POST /api/v1/score</div><div class="arch-box"><Icon name="webhook" :size="13" />POST /api/v1/events</div>
-        <div class="arch-box"><Icon name="sparkles" :size="13" />Claude explanations</div></div>
+        <div class="arch-box"><Icon name="sparkles" :size="13" />AI explanations</div></div>
       <Icon name="arrow-right" :size="20" style="color:var(--muted)" />
       <div><div class="eyebrow">Actions</div><div v-for="c in d.outbound" :key="c.id" class="arch-box" :class="{ on: c.live?.sent }"><Icon name="send" :size="13" />{{ c.name }}<span class="count">{{ c.live?.sent ? F.n(c.live.sent) : c.protocol }}</span></div></div>
     </div></div></div>

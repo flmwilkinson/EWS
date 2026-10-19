@@ -102,7 +102,7 @@ const App = {
   template: `<div class="shell">
     <nav class="nav">
       <div class="brand"><div class="brand-mark"><Icon name="activity" :size="18" :stroke="2.4" /></div>
-        <div><div class="brand-name">Early Warning Studio</div><div class="brand-sub">Retail credit · real-time EWI</div></div></div>
+        <div><div class="brand-name">Early Warning Studio</div><div class="brand-sub">Credit card early warning</div></div></div>
       <div class="nav-scroll">
         <template v-for="(n, i) in NAV" :key="i">
           <div v-if="n.section" class="nav-section">{{ n.section }}</div>
@@ -116,7 +116,7 @@ const App = {
         <div class="kv"><span>Compute</span><span>Python 3.11 runtime</span></div>
         <div class="kv"><span>Lakehouse</span><span>Parquet + DuckDB</span></div>
         <div class="kv"><span>Champion</span><span>{{ store.live?.champion || '–' }}</span></div>
-        <div class="kv"><span>LLM</span><span><span class="dot" :class="store.health?.llm?.configured ? 'ok' : 'bad'" style="margin-right:5px"></span>{{ store.health?.llm?.model || '–' }}</span></div>
+        <div class="kv"><span>AI</span><span><span class="dot" :class="store.health?.llm?.configured ? 'ok' : 'bad'" style="margin-right:5px"></span>{{ store.health?.llm?.configured ? 'Connected' : 'Not configured' }}</span></div>
       </div>
     </nav>
     <div class="main">

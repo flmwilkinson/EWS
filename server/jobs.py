@@ -84,7 +84,7 @@ def apply_event(task: dict, ev: dict):
 
 def _summary(task):
     return {k: task.get(k) for k in ("key", "status", "started_at", "finished_at", "duration", "rows_written",
-                                     "tables_written", "llm_calls", "error")}
+                                     "tables_written", "llm_calls", "error", "code_hash")}
 
 
 class JobRunner:
@@ -197,6 +197,12 @@ class JobRunner:
                          "CANCELLED" if run.get("cancel") else "FAILED")
         run["finished_at"] = time.time()
         run["duration"] = round(run["finished_at"] - run["started_at"], 1)
+        if run["n_ok"]:
+            try:  # the state of the system after this run, for comparing runs later
+                from server.run_compare import snapshot
+                self.db.update_run(run["run_id"], summary=json.dumps(snapshot(), default=str))
+            except Exception as e:
+                print("run summary failed:", e)
         self.db.update_run(run["run_id"], status=run["status"], finished_at=run["finished_at"], duration=run["duration"],
                            n_ok=run["n_ok"], n_failed=run["n_failed"], n_skipped=run["n_skipped"],
                            rows_written=run["rows_written"], llm_calls=run["llm_calls"])
@@ -206,6 +212,11 @@ class JobRunner:
     def _run_task(self, run, key):
         t = run["task_state"][key]
         path = PIPELINE_DIR / TASK[key]["notebook"]
+        try:  # record exactly which code ran, so runs can be compared
+            t["code_hash"] = self.db.save_code(TASK[key]["notebook"], path.read_text(encoding="utf-8"))
+            self.db.update_task(run["run_id"], key, code_hash=t["code_hash"])
+        except Exception:
+            pass
         env = dict(os.environ, EWS_RUN_ID=run["run_id"], EWS_TASK=key, PYTHONUTF8="1", PYTHONIOENCODING="utf-8")
         flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
         ok_end = False

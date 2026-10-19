@@ -1,7 +1,7 @@
 # %% [markdown]
 # # 10 · Monitoring and portfolio commentary (AI)
 #
-# Two paragraphs for the committee pack, written by Claude from structured facts only:
+# Two paragraphs for the committee pack, written by the AI from structured facts only:
 #
 # 1. **Model risk commentary**: discrimination, calibration, stability, watchlist movements and early warning
 #    effectiveness against appetite, with owners for any action.
